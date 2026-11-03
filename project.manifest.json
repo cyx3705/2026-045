@@ -6,28 +6,28 @@
     "strictValidationArgument": "-Instantiation"
   },
   "project": {
-    "id": "0000-002",
-    "name": "ModuleReady",
-    "title": "OneHistory \u5BBF\u4E3B\u6A21\u5757\u8D77\u6B65\u6A21\u677F",
+    "id": "2026-045",
+    "name": "Usus",
+    "title": "Usus Usus 机械设计经验知识库：经验条目按语义与关键词检索，供 AI 调用与积累",
     "kind": [
-      "template",
       "software",
       "appshell-module"
     ],
-    "status": "template",
+    "status": "active",
     "version": "0.1.1",
     "branch": "main"
   },
   "paths": {
     "activeRoots": [
       "b-Office",
-      "b-Code/HistoryExemplum",
-      "b-Code/HistoryExemplum.Tests",
-      "b-Code"
+      "b-Code/Usus",
+      "b-Code/Usus.Tests",
+      "b-Code",
+      "z-经验库"
     ],
     "sourceRoots": [
-      "b-Code/HistoryExemplum",
-      "b-Code/HistoryExemplum.Tests"
+      "b-Code/Usus",
+      "b-Code/Usus.Tests"
     ],
     "generatedRoots": [
       "b-Code/**/bin",
@@ -51,11 +51,11 @@
   },
   "commands": {
     "setup": null,
-    "build": "dotnet build .\\b-Code\\HistoryExemplum\\HistoryExemplum.csproj -c Release -p:NuGetAudit=false",
-    "test": "dotnet run --project .\\b-Code\\HistoryExemplum.Tests\\HistoryExemplum.Tests.csproj -c Release -p:NuGetAudit=false",
+    "build": "dotnet build .\\b-Code\\Usus\\Usus.csproj -c Release -p:NuGetAudit=false",
+    "test": "dotnet run --project .\\b-Code\\Usus.Tests\\Usus.Tests.csproj -c Release -p:NuGetAudit=false",
     "verify": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\b-Code\\Test-ProjectContract.ps1 -Instantiation",
     "run": null,
-    "package": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\b-Code\\HistoryExemplum\\eng\\Build-HistoryExemplumPackage.ps1"
+    "package": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\b-Code\\Usus\\eng\\Build-UsusPackage.ps1"
   },
   "externalDependencies": [
     "HistoryVulcan 5.1.2 \u6216\u66F4\u65B0\u7684\u53D1\u5E03\u5FEB\u7167\uFF1AC:\\OneHistory\\HistoryClio\\2026-023-HistoryVulcan\\z-Publish",
@@ -71,14 +71,14 @@
     "artifacts/**"
   ],
   "publish": {
-    "versionProps": "b-Code\\HistoryExemplum\\HistoryExemplumVersion.props",
-    "versionProperty": "HistoryExemplumVersion",
-    "sourceManifest": "b-Code\\HistoryExemplum\\module.manifest.json",
+    "versionProps": "b-Code\\Usus\\UsusVersion.props",
+    "versionProperty": "UsusVersion",
+    "sourceManifest": "b-Code\\Usus\\module.manifest.json",
     "package": {
-      "project": "b-Code\\HistoryExemplum\\HistoryExemplum.csproj",
+      "project": "b-Code\\Usus\\Usus.csproj",
       "files": [
-        "HistoryExemplum.dll",
-        "HistoryExemplum.xml",
+        "Usus.dll",
+        "Usus.xml",
         "module.manifest.json"
       ]
     },
@@ -88,12 +88,12 @@
         "arguments": [
           "run",
           "--project",
-          "b-Code\\HistoryExemplum.Tests\\HistoryExemplum.Tests.csproj",
+          "b-Code\\Usus.Tests\\Usus.Tests.csproj",
           "-c",
           "Release",
           "-p:NuGetAudit=false"
         ],
-        "description": "Run HistoryExemplum offline tests"
+        "description": "Run Usus offline tests"
       }
     ]
   }

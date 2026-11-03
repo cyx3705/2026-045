@@ -1,61 +1,35 @@
-<!-- template:head -->
-# ModuleReady
+# Usus
 
-> 宿主模块起步模板：派生、跑一条脚本，就是一个可构建、可测试、可热装的 HistoryVulcan 模块仓
-<!-- /template:head -->
+> Usus 机械设计经验知识库：经验条目按语义与关键词检索，供 AI 调用与积累
 
-<!-- template:usage -->
-## 从模板建立模块
-
-本模板从 `0000-001-AIReady` 派生，内含一个能直接跑通的示范模块 `HistoryExemplum`（域 `exemplum`，
-一页 Aurora 页面、三条示范指令、离线测试含宿主装载冒烟）。新模块不必再去别的模块仓里复制。
-
-1. 建仓：`janus.proj.create name=2026-0xx-<模块名> base=0000-002-ModuleReady`。
-2. 在新仓主树实例化（机械改名、改身份，跑完脚本删掉自己）：
-
-   ```powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\b-Code\New-ModuleFromTemplate.ps1 `
-       -Name <模块名，可带或不带 History 前缀> -Description '<一句话描述>' [-Domain <域>] [-PageTitle <页面标题>]
-   ```
-
-   构建、测试通过后把这次实例化提交成一个脚手架提交，让之后的开发工作区只装业务改动。
-3. 不用改宿主仓：发布描述已在 `project.manifest.json` 的 `publish` 节（宿主 5.8.0 起模块自带）。
-4. `vulcan.dev.start` 开工作区，在里面把 `hello.*` 示范换成真实业务、填完 `{{...}}`，
-   跑严格合同检查，再 `submit`（候选构建并热装）→ 审过 → `finish`。
-
-模板自身的验证（模板模式，不带 `-Instantiation`）：
-
-```powershell
-dotnet run --project .\b-Code\HistoryExemplum.Tests\HistoryExemplum.Tests.csproj -c Release -p:NuGetAudit=false
-powershell -NoProfile -ExecutionPolicy Bypass -File .\b-Code\Test-ProjectContract.ps1
-```
-
-<!-- /template:usage -->
 ## 定位
 
-{{这个模块做什么、为谁做；两三句话}}
+机械设计的经验库：踩过的坑、评审意见、选型取舍、工艺约束，一条经验写成一个 Markdown 文件，放在本仓 `z-经验库/` 里长期维护。
+模块给这些文件建关键词与语义索引，AI 按问题检索出最相关的几条，带出处地用进设计里。名字取自贺拉斯把 usus（惯例、实践）与 norma（规范）并举：Norma 管公式，Usus 管经验。
 
-- {{明确不做的事，以及它属于哪个模块}}
+- 不做计算和查表，那是 Norma 的事；经验里需要算的地方引用 Norma 的指令名。
+- 不做建模、出图，那是 Strenua 与 SolidEdgeMCP 的事。
+- 经验正文不进运行区：运行区只放能从 `z-经验库/` 重建的索引。
 
 ## 概况
 
 | 项 | 值 |
 | --- | --- |
 | 角色 | 宿主模块（`kind=module`） |
-| 指令域 | `exemplum` |
-| 界面 | Aurora 描述式页面（场景 `HistoryExemplum`） |
+| 指令域 | `usus` |
+| 界面 | Aurora 描述式页面（场景 `HistoryUsus`） |
 | MCP 投影 | `readonly` |
-| 版本与宿主下限 | [`HistoryExemplumVersion.props`](./b-Code/HistoryExemplum/HistoryExemplumVersion.props) |
+| 版本与宿主下限 | [`UsusVersion.props`](./b-Code/Usus/UsusVersion.props) |
 
 ## 能力
 
 | 按钮 | 指令 | 用途 |
 | --- | --- | --- |
-| 打招呼 | `exemplum.hello.ping` | 示范：改状态的无参指令，刷新页面表格 |
-| — | `exemplum.hello.echo text=…` | 示范：带参数的只读指令 |
-| — | `exemplum.hello.list` | 示范：只读列表，投影到 MCP |
+| 打招呼 | `usus.hello.ping` | 示范：改状态的无参指令，刷新页面表格 |
+| — | `usus.hello.echo text=…` | 示范：带参数的只读指令 |
+| — | `usus.hello.list` | 示范：只读列表，投影到 MCP |
 
-指令说明就是注册时的自描述（`diana.docs.read domain=exemplum`，宿主 6.1.0 起没有消费文档）；自描述装不下的取舍写进 [现行约定](./b-Office/现行约定.md)。
+指令说明就是注册时的自描述（`diana.docs.read domain=usus`，宿主 6.1.0 起没有消费文档）；自描述装不下的取舍写进 [现行约定](./b-Office/现行约定.md)。
 
 ## 入口
 
@@ -69,17 +43,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\b-Code\Test-ProjectContrac
 
 | 路径 | 职责 |
 | --- | --- |
-| `b-Code/HistoryExemplum/` | 模块源码、manifest 与 `eng/` 构建脚本 |
-| `b-Code/HistoryExemplum.Tests/` | 离线自动验证（含宿主装载冒烟） |
+| `b-Code/Usus/` | 模块源码、manifest 与 `eng/` 构建脚本 |
+| `b-Code/Usus.Tests/` | 离线自动验证（含宿主装载冒烟） |
 | `b-Code/` | 项目合同检查 |
-| `b-Office/` | 唯一长期文档 `current/现行约定.md` |
+| `b-Office/` | 唯一长期文档 `现行约定.md` |
+| `z-经验库/` | 经验正文，一条一个 Markdown 文件，长期维护、纳入 git |
 | `z-Publish/` | 正式快照与 `history/` 归档，由宿主管线写入 |
 
 ## 构建与验证
 
 ```powershell
-dotnet build .\b-Code\HistoryExemplum\HistoryExemplum.csproj -c Release -p:NuGetAudit=false
-dotnet run --project .\b-Code\HistoryExemplum.Tests\HistoryExemplum.Tests.csproj -c Release -p:NuGetAudit=false
+dotnet build .\b-Code\Usus\Usus.csproj -c Release -p:NuGetAudit=false
+dotnet run --project .\b-Code\Usus.Tests\Usus.Tests.csproj -c Release -p:NuGetAudit=false
 powershell -NoProfile -ExecutionPolicy Bypass -File .\b-Code\Test-ProjectContract.ps1 -Instantiation
 ```
 
@@ -90,13 +65,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\b-Code\Test-ProjectContrac
 
 改动只进 `vulcan.dev.start` 创建的工作区，经宿主 Console CLI 走
 `vulcan.dev.start` → `vulcan.dev.submit`（候选构建并热装送审）→ `vulcan.dev.finish`（批准后并回并写入 `z-Publish`）。
-本仓不自行发布；`eng/Build-HistoryExemplumPackage.ps1` 只用于本地候选构建。
+本仓不自行发布；`eng/Build-UsusPackage.ps1` 只用于本地候选构建。
 
 ## 要点
 
-- 页面 owner 由指令域推出（`exemplum` → `HistoryExemplum`），合同检查与离线测试都守着这条。
-- 版本只改 `HistoryExemplumVersion.props`，再同步两份 manifest；三处不一致构建前就失败。
-- {{本模块特有的要点}}
+- 页面 owner 由指令域推出（`usus` → `HistoryUsus`），合同检查与离线测试都守着这条。
+- 版本只改 `UsusVersion.props`，再同步两份 manifest；三处不一致构建前就失败。
+- 经验是数据不是指令：加一条经验就是在 `z-经验库/` 加一个文件，不发版；索引发现文件变了自动增量重建。
+- 条目格式见 [`z-经验库/README.md`](./z-经验库/README.md)。
 
 ## 保留内容
 
