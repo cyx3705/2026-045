@@ -25,9 +25,12 @@
 
 | 按钮 | 指令 | 用途 |
 | --- | --- | --- |
-| 打招呼 | `usus.hello.ping` | 示范：改状态的无参指令，刷新页面表格 |
-| — | `usus.hello.echo text=…` | 示范：带参数的只读指令 |
-| — | `usus.hello.list` | 示范：只读列表，投影到 MCP |
+| — | `usus.kb.search q=… [k=5]` | 按问题检索经验，返回最相关的几条及出处（只读，MCP 可用） |
+| — | `usus.kb.show id=U0001` | 取一条经验的全文（只读，MCP 可用） |
+| — | `usus.kb.list [tag=…]` | 列条目，可按标签筛（只读，MCP 可用） |
+| — | `usus.kb.check` | 检查格式问题、给出下一个编号；写完条目后跑一次（只读，MCP 可用） |
+| 重新读取 | `usus.kb.refresh` | 重读经验库并刷新页面表格 |
+| — | `usus.kb.root path=…` | 改经验库位置（存进模块设置） |
 
 指令说明就是注册时的自描述（`diana.docs.read domain=usus`，宿主 6.1.0 起没有消费文档）；自描述装不下的取舍写进 [现行约定](./b-Office/现行约定.md)。
 

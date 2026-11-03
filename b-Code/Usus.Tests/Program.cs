@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using Usus;
+using Usus.Knowledge;
 using HistoryVulcan.Core.Commands;
 using System.Diagnostics;
 using System.Reflection;
@@ -14,6 +15,9 @@ Console.OutputEncoding = Encoding.UTF8;
 var tests = new (string Name, Func<Task> Run)[]
 {
     ("command registration", Sync(TestCommandRegistration)),
+    ("entry file format", Sync(TestEntryFormat)),
+    ("tokenizer keeps model numbers and splits han", Sync(TestTokenizer)),
+    ("library search, show, check", TestLibraryCommands),
     ("page owner follows domain", Sync(TestPageOwner)),
     ("buttons, actions and commands line up", Sync(TestPageWiring)),
     ("versions agree", Sync(TestVersionsAgree)),
@@ -46,7 +50,7 @@ static Func<Task> Sync(Action test) => () =>
 static Registrar Registry()
 {
     var registry = new Registrar();
-    UsusModule.Register(registry, new UsusState(null));
+    UsusModule.Register(registry, new UsusState(null, null, Path.Combine(Path.GetTempPath(), "Usus.Tests.empty")));
     return registry;
 }
 
@@ -56,9 +60,12 @@ static void TestCommandRegistration()
     var domain = UsusIdentity.Domain;
     string[] expected =
     [
-        domain + ".hello.ping",
-        domain + ".hello.echo",
-        domain + ".hello.list",
+        domain + ".kb.search",
+        domain + ".kb.show",
+        domain + ".kb.list",
+        domain + ".kb.check",
+        domain + ".kb.refresh",
+        domain + ".kb.root",
         domain + ".ui.describe",
         domain + ".ui.actions",
         domain + ".ui.data",
@@ -77,6 +84,98 @@ static void TestCommandRegistration()
         True(ui!.Readonly, $"{domain}.ui.{method} 必须只读");
         True(ui.HiddenReason is not null, $"{domain}.ui.{method} 是界面内部协议，必须 HiddenReason");
     }
+}
+
+static void TestEntryFormat()
+{
+    var entry = Library.Parse(EntryText("U0007", "振动场合别靠弹簧垫圈防松", "[螺栓, 防松， GB/T 93]", "结论第一句。\n\n后面的解释。"),
+        "连接/U0007-防松.md", out var reason);
+    True(entry is not null, reason ?? "");
+    Equal("U0007", entry!.Id);
+    Equal(3, entry.Tags.Count);
+    Equal("GB/T 93", entry.Tags[2]);
+    Equal("结论第一句。", entry.Snippet());
+
+    Library.Parse("没有文件头", "U0001-x.md", out reason);
+    True(reason!.Contains("文件头", StringComparison.Ordinal), reason);
+    Library.Parse(EntryText("U0001", "t", "[a]", "b"), "U0002-x.md", out reason);
+    True(reason!.Contains("文件名", StringComparison.Ordinal), reason);
+    Library.Parse(EntryText("A1", "t", "[a]", "b"), "A1-x.md", out reason);
+    True(reason!.Contains("编号", StringComparison.Ordinal), reason);
+    Library.Parse("---\nid: U0001\ntitle: t\ndate: 2026-11-03\n---\nb", "U0001-x.md", out reason);
+    True(reason!.Contains("tags", StringComparison.Ordinal), reason);
+}
+
+static void TestTokenizer()
+{
+    var tokens = KeywordIndex.Tokenize("HGH20CA导轨，GB/T 5783 螺栓").ToList();
+    True(tokens.Contains("hgh20ca"), string.Join(",", tokens));
+    True(tokens.Contains("5783"), string.Join(",", tokens));
+    True(tokens.Contains("导轨"), string.Join(",", tokens));
+    True(tokens.Contains("螺栓"), string.Join(",", tokens));
+    Equal(1, KeywordIndex.Tokenize("轴").Count());
+}
+
+static async Task TestLibraryCommands()
+{
+    var root = Path.Combine(Path.GetTempPath(), UsusIdentity.Name + ".Tests", Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(Path.Combine(root, "连接"));
+    Directory.CreateDirectory(Path.Combine(root, "传动"));
+    try
+    {
+        File.WriteAllText(Path.Combine(root, "README.md"), "不是条目");
+        File.WriteAllText(Path.Combine(root, "连接", "U0001-防松.md"),
+            EntryText("U0001", "振动场合别靠弹簧垫圈防松", "[螺栓, 防松, 振动]", "有横向振动时弹簧垫圈基本不防松。"));
+        File.WriteAllText(Path.Combine(root, "传动", "U0003-导轨.md"),
+            EntryText("U0003", "HGH20CA 导轨安装面要磨", "[导轨, HGH20CA]", "导轨安装面平面度决定运行精度。"));
+        File.WriteAllText(Path.Combine(root, "传动", "U0004-坏.md"), "没有文件头");
+
+        var state = new UsusState(null, null, root);
+        var registry = new Registrar();
+        UsusModule.Register(registry, state);
+
+        var search = await Run(registry, "kb.search", ("q", "螺栓振动松了怎么办"));
+        True(search.Success, search.Message);
+        True(search.Message.Contains("U0001", StringComparison.Ordinal) && !search.Message.Contains("U0003", StringComparison.Ordinal), search.Message);
+
+        var model = await Run(registry, "kb.search", ("q", "hgh20ca"));
+        True(model.Message.Contains("U0003", StringComparison.Ordinal), model.Message);
+
+        var none = await Run(registry, "kb.search", ("q", "齿轮"));
+        True(none.Success && none.Message.Contains("没有找到", StringComparison.Ordinal), none.Message);
+
+        var show = await Run(registry, "kb.show", ("id", "u0003"));
+        True(show.Success && show.Message.Contains("平面度", StringComparison.Ordinal), show.Message);
+        True(!(await Run(registry, "kb.show", ("id", "U0009"))).Success, "不存在的编号应失败");
+
+        var list = await Run(registry, "kb.list", ("tag", "导轨"));
+        True(list.Message.StartsWith("共 1 条", StringComparison.Ordinal), list.Message);
+
+        var check = await Run(registry, "kb.check");
+        True(check.Message.Contains("2 条", StringComparison.Ordinal) && check.Message.Contains("格式问题 1 个", StringComparison.Ordinal)
+            && check.Message.Contains("U0005", StringComparison.Ordinal), check.Message);
+
+        // 改文件后不用手动刷新：下一次检索按指纹自动重读。
+        File.WriteAllText(Path.Combine(root, "传动", "U0004-坏.md"),
+            EntryText("U0004", "同步带张紧轮放松边", "[同步带, 张紧]", "张紧轮装在松边。"));
+        var after = await Run(registry, "kb.search", ("q", "同步带张紧"));
+        True(after.Message.Contains("U0004", StringComparison.Ordinal), after.Message);
+        Equal(3, state.Rows().Count);
+    }
+    finally
+    {
+        Directory.Delete(root, recursive: true);
+    }
+}
+
+static string EntryText(string id, string title, string tags, string body)
+    => $"---\nid: {id}\ntitle: {title}\ntags: {tags}\ndate: 2026-11-03\n---\n\n{body}\n";
+
+static async Task<CommandResult> Run(Registrar registry, string command, params (string Name, string Value)[] args)
+{
+    True(registry.TryGet(UsusIdentity.Domain + "." + command, out var descriptor), $"未注册 {command}");
+    var arguments = args.ToDictionary(arg => arg.Name, arg => arg.Value);
+    return await descriptor!.Handler(new CommandContext(descriptor, arguments, "test", null, CancellationToken.None));
 }
 
 static void TestPageOwner()
@@ -158,20 +257,19 @@ static async Task TestHostLoadsPackage()
         var archive = Path.Combine(root, UsusIdentity.Name + ".nupkg");
         WriteNugetPackage(package, archive, manifest.GetProperty("version").GetString()!);
 
-        var echo = await Probe(archive, UsusIdentity.Domain + ".hello.echo text=OneHistory");
+        var echo = await Probe(archive, UsusIdentity.Domain + ".kb.search q=螺栓防松");
         True(echo.GetProperty("data").ValueKind == JsonValueKind.Object, "宿主探针未返回装载数据：" + echo.GetRawText());
         var module = echo.GetProperty("data").GetProperty("module");
         True(module.GetProperty("attached").GetBoolean(),
             "宿主没有接上模块：" + string.Join("；", module.GetProperty("attachFailures").EnumerateArray().Select(item => item.GetString()))
             + "；诊断：" + string.Join("；", echo.GetProperty("diagnostics").EnumerateArray().Select(item => item.GetString())));
         Equal(UsusIdentity.Name, module.GetProperty("name").GetString());
-        Equal(6, module.GetProperty("commandCount").GetInt32());
+        Equal(9, module.GetProperty("commandCount").GetInt32());
         var result = echo.GetProperty("data").GetProperty("result");
         True(result.GetProperty("success").GetBoolean(), result.GetProperty("message").GetString() ?? "");
-        Equal("OneHistory", result.GetProperty("message").GetString());
 
-        var ping = await Probe(archive, UsusIdentity.Domain + ".hello.ping");
-        True(ping.GetProperty("success").GetBoolean(), ping.GetRawText());
+        var refresh = await Probe(archive, UsusIdentity.Domain + ".kb.refresh");
+        True(refresh.GetProperty("success").GetBoolean(), refresh.GetRawText());
     }
     finally
     {

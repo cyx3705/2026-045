@@ -4,7 +4,7 @@ using System.Text.Json;
 namespace Usus;
 
 /// <summary>
-/// Aurora 页面协议 V1：一页，上面一块控制面板放按钮，下面一张表。
+/// Aurora 页面协议 V1：一页，上面一块控制面板放按钮，下面一张经验条目表。
 /// </summary>
 /// <remarks>
 /// 三条规矩（离线测试守着）：owner 与 scene 用 <see cref="UsusIdentity.PageOwner"/>；
@@ -13,10 +13,10 @@ namespace Usus;
 internal static class UsusPage
 {
     public const string PageId = UsusIdentity.Domain;
-    public const string PanelId = "hello-actions";
-    public const string HistoryTableId = "hello-history";
-    public const string HistoryView = "history";
-    public const string PingActionId = UsusIdentity.Domain + ".hello.ping";
+    public const string PanelId = "kb-actions";
+    public const string EntriesTableId = "kb-entries";
+    public const string EntriesView = "entries";
+    public const string RefreshActionId = UsusIdentity.Domain + ".kb.refresh";
 
     private static readonly JsonSerializerOptions Options = new()
     {
@@ -45,7 +45,7 @@ internal static class UsusPage
                         {
                             type = "panel",
                             id = PanelId,
-                            text = "操作",
+                            text = "经验库",
                             rows = new object[]
                             {
                                 new
@@ -53,7 +53,7 @@ internal static class UsusPage
                                     mode = "even",
                                     widgets = new object[]
                                     {
-                                        new { kind = "button", action = PingActionId, text = "打招呼" },
+                                        new { kind = "button", action = RefreshActionId, text = "重新读取" },
                                     },
                                 },
                             },
@@ -62,21 +62,23 @@ internal static class UsusPage
                         {
                             type = "text",
                             style = "caption",
-                            text = "执行过程与结果同时写进控制台。",
+                            text = "加经验就是在 z-经验库 里新建 Markdown 文件；检索用 usus.kb.search。",
                         },
                         new
                         {
                             type = "table",
-                            id = HistoryTableId,
+                            id = EntriesTableId,
                             dataSource = new
                             {
                                 command = UsusIdentity.Domain + ".ui.data",
-                                args = new { view = HistoryView },
+                                args = new { view = EntriesView },
                             },
                             columns = new object[]
                             {
-                                new { key = "index", title = "次序", width = "80" },
-                                new { key = "time", title = "时间", width = "*" },
+                                new { key = "id", title = "编号", width = "80" },
+                                new { key = "title", title = "标题", width = "*" },
+                                new { key = "tags", title = "标签", width = "240" },
+                                new { key = "path", title = "文件", width = "240" },
                             },
                         },
                     },
@@ -93,10 +95,10 @@ internal static class UsusPage
         {
             new
             {
-                id = PingActionId,
-                title = "打招呼",
-                command = UsusIdentity.Domain + ".hello.ping",
-                summary = "打一声招呼，记进表格",
+                id = RefreshActionId,
+                title = "重新读取",
+                command = UsusIdentity.Domain + ".kb.refresh",
+                summary = "重新读经验库并刷新表格",
             },
         },
     }, Options);
