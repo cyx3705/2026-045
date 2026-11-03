@@ -8,7 +8,7 @@
   "project": {
     "id": "2026-045",
     "name": "Usus",
-    "title": "Usus Usus 机械设计经验知识库：经验条目按语义与关键词检索，供 AI 调用与积累",
+    "title": "Usus 机械设计经验知识库：经验条目按语义与关键词检索，供 AI 调用与积累",
     "kind": [
       "software",
       "appshell-module"
