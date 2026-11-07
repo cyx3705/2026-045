@@ -18,6 +18,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("entry file format", Sync(TestEntryFormat)),
     ("tokenizer keeps model numbers and splits han", Sync(TestTokenizer)),
     ("library search, show, check", TestLibraryCommands),
+    ("z address reads through diana.z", TestZSource),
     ("page owner follows domain", Sync(TestPageOwner)),
     ("buttons, actions and commands line up", Sync(TestPageWiring)),
     ("versions agree", Sync(TestVersionsAgree)),
@@ -168,6 +169,39 @@ static async Task TestLibraryCommands()
     }
 }
 
+// 0.3.0：缺省位置是 z 地址，经 diana.z.tree / diana.z.read 读，不碰本机路径；没变的文件不重读。
+static async Task TestZSource()
+{
+    var files = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["连接/U0001-防松.md"] = EntryText("U0001", "振动场合别靠弹簧垫圈防松", "[螺栓, 防松]", "弹簧垫圈基本不防松。"),
+        ["README.md"] = "不是条目",
+    };
+    var bus = new FakeZBus("2026-045-Usus/z-经验库", files);
+    True(UsusState.DefaultRoot == "2026-045/z-经验库", "缺省位置必须是 z 地址");
+    True(!UsusState.IsLocalPath(UsusState.DefaultRoot) && UsusState.IsLocalPath(@"C:\x"), "本机路径判定");
+
+    var state = new UsusState(bus, null);
+    var registry = new Registrar();
+    UsusModule.Register(registry, state);
+    var search = await Run(registry, "kb.search", ("q", "螺栓防松"));
+    True(search.Message.Contains("U0001", StringComparison.Ordinal), search.Message);
+    var reads = bus.Reads;
+    await Run(registry, "kb.search", ("q", "螺栓"));
+    Equal(reads, bus.Reads);
+
+    files["连接/U0002-张紧.md"] = EntryText("U0002", "同步带张紧轮放松边", "[同步带]", "张紧轮装在松边。");
+    var after = await Run(registry, "kb.search", ("q", "同步带"));
+    True(after.Message.Contains("U0002", StringComparison.Ordinal), after.Message);
+    Equal(reads + 1, bus.Reads);
+
+    var missing = new UsusState(new FakeZBus(null, files), null);
+    var missingRegistry = new Registrar();
+    UsusModule.Register(missingRegistry, missing);
+    var check = await Run(missingRegistry, "kb.check");
+    True(!check.Success && check.Message.Contains("diana", StringComparison.Ordinal), check.Message);
+}
+
 static string EntryText(string id, string title, string tags, string body)
     => $"---\nid: {id}\ntitle: {title}\ntags: {tags}\ndate: 2026-11-03\n---\n\n{body}\n";
 
@@ -265,11 +299,10 @@ static async Task TestHostLoadsPackage()
             + "；诊断：" + string.Join("；", echo.GetProperty("diagnostics").EnumerateArray().Select(item => item.GetString())));
         Equal(UsusIdentity.Name, module.GetProperty("name").GetString());
         Equal(9, module.GetProperty("commandCount").GetInt32());
+        // 0.3.0：经验库经 diana.z 读；探针宿主只装本模块，没有 Diana，必须是说清原因的失败，不是执行异常。
         var result = echo.GetProperty("data").GetProperty("result");
-        True(result.GetProperty("success").GetBoolean(), result.GetProperty("message").GetString() ?? "");
-
-        var refresh = await Probe(archive, UsusIdentity.Domain + ".kb.refresh");
-        True(refresh.GetProperty("success").GetBoolean(), refresh.GetRawText());
+        var message = result.GetProperty("message").GetString() ?? "";
+        True(!result.GetProperty("success").GetBoolean() && message.Contains("diana", StringComparison.Ordinal), message);
     }
     finally
     {

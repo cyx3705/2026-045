@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "HistoryVulcan.Module",
   "name": "Usus",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Usus 机械设计经验知识库：经验条目按语义与关键词检索，供 AI 调用与积累",
   "artifact": "Usus.dll",
   "docs": "Usus.xml",

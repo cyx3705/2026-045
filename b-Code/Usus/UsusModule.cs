@@ -53,7 +53,7 @@ public sealed class UsusModule : IModuleContextAware
                     Default = "5",
                 },
             ],
-            Handler = CommandDescriptor.Sync(context =>
+            Handler = Guarded(context =>
             {
                 var k = context.GetInt("k", 5);
                 if (k is < 1 or > 20)
@@ -86,7 +86,7 @@ public sealed class UsusModule : IModuleContextAware
                     Required = true,
                 },
             ],
-            Handler = CommandDescriptor.Sync(context =>
+            Handler = Guarded(context =>
             {
                 var id = context.RequireString("id");
                 var entry = state.Knowledge.Find(id);
@@ -113,7 +113,7 @@ public sealed class UsusModule : IModuleContextAware
                     Type = ParamType.String,
                 },
             ],
-            Handler = CommandDescriptor.Sync(context =>
+            Handler = Guarded(context =>
             {
                 var tag = context.GetString("tag")?.Trim();
                 var entries = state.Knowledge.Current().Library.Entries
@@ -137,9 +137,16 @@ public sealed class UsusModule : IModuleContextAware
             Readonly = true,
             Handler = CommandDescriptor.Sync(_ =>
             {
-                var library = state.Knowledge.Current().Library;
-                if (!Directory.Exists(library.Root))
-                    return CommandResult.Fail($"经验库目录不存在：{library.Root}");
+                Library library;
+                try
+                {
+                    library = state.Knowledge.Current().Library;
+                }
+                catch (Exception ex) when (ex is IOException or InvalidOperationException)
+                {
+                    return CommandResult.Fail($"经验库 {state.Root} 读不到：{ex.Message}");
+                }
+
                 var next = NextId(library);
                 var text = new StringBuilder($"经验库 {library.Root}：{library.Entries.Count} 条，格式问题 {library.Problems.Count} 个，下一个编号 {next}");
                 foreach (var problem in library.Problems)
@@ -166,7 +173,16 @@ public sealed class UsusModule : IModuleContextAware
             Level = CommandLevel.Run,
             Handler = async _ =>
             {
-                var library = state.Knowledge.Current().Library;
+                Library library;
+                try
+                {
+                    library = state.Knowledge.Current().Library;
+                }
+                catch (Exception ex) when (ex is IOException or InvalidOperationException)
+                {
+                    return CommandResult.Fail($"经验库 {state.Root} 读不到：{ex.Message}");
+                }
+
                 await state.RefreshPageAsync().ConfigureAwait(false);
                 return CommandResult.Ok($"经验库 {library.Entries.Count} 条，格式问题 {library.Problems.Count} 个");
             },
@@ -177,15 +193,15 @@ public sealed class UsusModule : IModuleContextAware
             Name = UsusIdentity.Domain + ".kb.root",
             Domain = UsusIdentity.Domain,
             CommandClass = Kb,
-            Summary = "改经验库目录位置，存进模块设置",
-            Example = UsusIdentity.Domain + @".kb.root path=D:\临时\经验库",
+            Summary = "改经验库位置（z 地址，或排障用的本机目录），存进模块设置",
+            Example = UsusIdentity.Domain + ".kb.root path=2026-045/z-经验库",
             Level = CommandLevel.Run,
             Parameters =
             [
                 new ParameterSpec
                 {
                     Name = "path",
-                    Description = @"经验库目录的绝对路径；传空串回到缺省位置 C:\OneHistory\HistoryClio\2026-045-Usus\z-经验库",
+                    Description = "z 地址（经 diana.z 读，模块在哪台机器都能用），或本机绝对目录（只给测试排障）；传空串回到缺省 2026-045/z-经验库",
                     Type = ParamType.String,
                     Required = true,
                 },
@@ -193,9 +209,7 @@ public sealed class UsusModule : IModuleContextAware
             Handler = async context =>
             {
                 var root = await state.SetRootAsync(context.GetString("path") ?? "").ConfigureAwait(false);
-                return Directory.Exists(root)
-                    ? CommandResult.Ok($"经验库位置改为 {root}")
-                    : CommandResult.Ok($"经验库位置改为 {root}（目录还不存在）");
+                return CommandResult.Ok($"经验库位置改为 {root}；用 {UsusIdentity.Domain}.kb.check 核对能否读到");
             },
         });
 
@@ -210,7 +224,7 @@ public sealed class UsusModule : IModuleContextAware
             Readonly = true,
             HiddenReason = Hidden,
             AllowUnspecifiedParameters = true,
-            Handler = CommandDescriptor.Sync(context =>
+            Handler = Guarded(context =>
                 context.GetString("view")?.Trim().ToLowerInvariant() is null or UsusPage.EntriesView
                     ? CommandResult.Ok("经验条目", state.Rows())
                     : CommandResult.Fail($"未知 view；支持 {UsusPage.EntriesView}")),
@@ -271,4 +285,20 @@ public sealed class UsusModule : IModuleContextAware
             HiddenReason = Hidden,
             Handler = CommandDescriptor.Sync(handler),
         };
+
+    /// <summary>
+    /// 经验库读不到（Diana 没装载、z 地址不对、本机目录不在）时给出原因，不让宿主只报「执行异常」。
+    /// </summary>
+    private static Func<CommandContext, Task<CommandResult>> Guarded(Func<CommandContext, CommandResult> handler)
+        => CommandDescriptor.Sync(context =>
+        {
+            try
+            {
+                return handler(context);
+            }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException)
+            {
+                return CommandResult.Fail($"经验库读不到：{ex.Message}");
+            }
+        });
 }

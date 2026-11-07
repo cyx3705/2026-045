@@ -3,8 +3,8 @@ using System.Text.RegularExpressions;
 namespace Usus.Knowledge;
 
 /// <summary>
-/// 读经验库目录：递归找 <c>*.md</c>，跳过 README 与 <c>_</c> 开头的文件，解析文件头。
-/// 纯文件读取，不引用宿主；格式不对的文件不进库，记进 <see cref="Problems"/>。
+/// 读经验库：从 <see cref="IEntrySource"/> 取 <c>*.md</c> 候选（已跳过 README 与 <c>_</c> 开头的文件），解析文件头。
+/// 不引用宿主；格式不对的文件不进库，记进 <see cref="Problems"/>。
 /// </summary>
 public sealed partial class Library
 {
@@ -15,27 +15,29 @@ public sealed partial class Library
         Problems = problems;
     }
 
+    /// <summary>经验库位置（z 地址或本机目录），只用于展示。</summary>
     public string Root { get; }
     public IReadOnlyList<Entry> Entries { get; }
     public IReadOnlyList<Problem> Problems { get; }
 
-    /// <summary>条目文件的指纹（路径、大小、修改时间）；变了才需要重建索引。</summary>
-    public static string Fingerprint(string root)
-        => string.Join('\n', Files(root).Select(path =>
-        {
-            var info = new FileInfo(path);
-            return $"{path}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
-        }));
+    /// <summary>候选文件的指纹（路径、大小、修改时间）；变了才需要重建索引。</summary>
+    public static string Fingerprint(IReadOnlyList<SourceFile> files)
+        => string.Join('\n', files.Select(file => $"{file.RelativePath}|{file.Length}|{file.Modified}"));
 
-    public static Library Load(string root)
+    /// <summary>本机目录作经验库（测试与排障）。</summary>
+    public static Library Load(string root) => Load(new DirectoryEntrySource(root));
+
+    public static Library Load(IEntrySource source) => Load(source, source.List());
+
+    public static Library Load(IEntrySource source, IReadOnlyList<SourceFile> files)
     {
         var entries = new List<Entry>();
         var problems = new List<Problem>();
         var seen = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var path in Files(root))
+        foreach (var file in files)
         {
-            var relative = Path.GetRelativePath(root, path).Replace('\\', '/');
-            var entry = Parse(File.ReadAllText(path), relative, out var reason);
+            var relative = file.RelativePath;
+            var entry = Parse(source.Read(file), relative, out var reason);
             if (entry is null)
             {
                 problems.Add(new Problem(relative, reason!));
@@ -52,7 +54,7 @@ public sealed partial class Library
             entries.Add(entry);
         }
 
-        return new Library(root, entries, problems);
+        return new Library(source.Location, entries, problems);
     }
 
     /// <summary>解析一个条目文件；不合格式时返回 null 并给出原因。</summary>
@@ -116,17 +118,6 @@ public sealed partial class Library
             body,
             relativePath);
     }
-
-    private static IEnumerable<string> Files(string root)
-        => Directory.Exists(root)
-            ? Directory.EnumerateFiles(root, "*.md", SearchOption.AllDirectories)
-                .Where(path =>
-                {
-                    var name = Path.GetFileName(path);
-                    return !name.StartsWith('_') && !name.Equals("README.md", StringComparison.OrdinalIgnoreCase);
-                })
-                .Order(StringComparer.Ordinal)
-            : [];
 
     [GeneratedRegex("^U[0-9]{4}$")]
     private static partial Regex IdPattern();
