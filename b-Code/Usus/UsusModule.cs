@@ -41,7 +41,7 @@ public sealed class UsusModule : IModuleContextAware
                 new ParameterSpec
                 {
                     Name = "q",
-                    Description = "问题或关键词，中文自然语言即可；型号、标准号照原样写，例如 M8 螺栓防松 GB/T 93",
+                    Description = "问题或关键词，中文自然语言即可；型号、标准号照原样写",
                     Type = ParamType.String,
                     Required = true,
                 },
