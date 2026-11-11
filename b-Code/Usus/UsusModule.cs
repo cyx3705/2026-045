@@ -132,7 +132,7 @@ public sealed class UsusModule : IModuleContextAware
             Name = UsusIdentity.Domain + ".kb.check",
             Domain = UsusIdentity.Domain,
             CommandClass = Kb,
-            Summary = "检查经验库：位置、条目数、格式不合的文件，并给出下一个可用编号",
+            Summary = "检查经验库格式并给出下一个编号",
             Example = UsusIdentity.Domain + ".kb.check",
             Readonly = true,
             Handler = CommandDescriptor.Sync(_ =>
@@ -168,7 +168,7 @@ public sealed class UsusModule : IModuleContextAware
             Name = UsusIdentity.Domain + ".kb.refresh",
             Domain = UsusIdentity.Domain,
             CommandClass = Kb,
-            Summary = "重新读经验库并刷新页面表格（检索前本来就会按文件变化自动重读）",
+            Summary = "重读经验库并刷新页面表格",
             Example = UsusIdentity.Domain + ".kb.refresh",
             Level = CommandLevel.Run,
             Handler = async _ =>
